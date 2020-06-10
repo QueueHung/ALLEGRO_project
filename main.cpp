@@ -6,6 +6,7 @@
 #include <allegro5/allegro_acodec.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
+#include <string>
 
 #define GAME_TERMINATE -1
 
@@ -20,8 +21,11 @@ ALLEGRO_KEYBOARD_STATE keyState ;
 ALLEGRO_TIMER *timer = NULL;
 ALLEGRO_TIMER *timer2 = NULL;
 ALLEGRO_TIMER *timer3 = NULL;
-ALLEGRO_SAMPLE *song=NULL;
+ALLEGRO_SAMPLE *song = NULL;
 ALLEGRO_FONT *font = NULL;
+// ALLEGRO Variables define by ourself
+
+
 
 //Custom Definition
 const char *title = "Final Project 10xxxxxxx";
@@ -48,6 +52,8 @@ bool judge_next_window = false;
 bool ture = true; //true: appear, false: disappear
 bool next = false; //true: trigger
 bool dir = true; //true: left, false: right
+bool music_control = true; // true: play music, false: stop music
+
 // Define by ourself
 int option_y = 80; // first option location_y in menu
 int option_rect_height = 40; // menu rectangle height
@@ -63,6 +69,9 @@ int game_run();
 void game_destroy();
 // Define by ourself
 void draw_menu();
+void draw_option();
+void set_charater();
+void load_music(std::string FileName);
 
 int main(int argc, char *argv[]) {
     int msg = 0;
@@ -125,38 +134,10 @@ void game_init() {
 }
 
 void game_begin() {
-    // Load sound
-    song = al_load_sample( "material/music/menu_background.wav" );
-    if (!song){
-        printf( "Audio clip sample not loaded!\n" );
-        show_err_msg(-6);
-    }
-    // Loop the song until the display closes
-    al_play_sample(song, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
+    load_music("menu_background.wav");
     draw_menu();
 }
-void draw_menu(){
-    al_clear_to_color(al_map_rgb(100,100,100));
-    // Load and draw text
-    font = al_load_ttf_font("material/font/Balsamiq/BalsamiqSans-Italic.ttf",20,0);
 
-    // Game title
-    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2, option_y , ALLEGRO_ALIGN_CENTRE, "Game Name Here");
-    al_draw_rectangle(WIDTH/2-150, option_y-10, WIDTH/2+150, option_y-10+option_rect_height, al_map_rgb(255, 255, 255), 0);
-    // Game start option
-    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+option_space_y , ALLEGRO_ALIGN_CENTRE, "Game Start");
-    al_draw_rectangle(WIDTH/2-90, option_y-10+option_space_y, WIDTH/2+150, option_y-10+option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
-    // Game option option
-    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+2*option_space_y , ALLEGRO_ALIGN_CENTRE, "Options");
-    al_draw_rectangle(WIDTH/2-90, option_y-10+2*option_space_y, WIDTH/2+150, option_y-10+2*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
-    // Game escape option
-    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+3*option_space_y , ALLEGRO_ALIGN_CENTRE, "Exit");
-    al_draw_rectangle(WIDTH/2-90, option_y-10+3*option_space_y, WIDTH/2+150, option_y-10+3*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
-    // Option pointer
-    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2-120, option_y+menu_selection*option_space_y , ALLEGRO_ALIGN_CENTRE, "=>");
-
-    al_flip_display();
-}
 int process_event(){
     // Request the event
     ALLEGRO_EVENT event;
@@ -198,7 +179,7 @@ int process_event(){
                 character1.x += 30;
                 break;
 
-            // For Start Menu
+            // For Start Menubackground
             case ALLEGRO_KEY_ENTER:
                 judge_next_window = true;
                 break;
@@ -227,30 +208,23 @@ int game_run() {
         if (!al_is_event_queue_empty(event_queue)) {
             error = process_event();
             if(judge_next_window) {
-                window = 2;
-                // Setting Character
-                character1.x = WIDTH / 2;
-                character1.y = HEIGHT / 2 + 150;
-                character2.x = WIDTH + 100;
-                character2.y = HEIGHT / 2 - 280;
-                character1.image_path = al_load_bitmap("tower.png");
-                character2.image_path = al_load_bitmap("teemo_left.png");
-                character3.image_path = al_load_bitmap("teemo_right.png");
-                background = al_load_bitmap("stage.jpg");
+                switch(menu_selection){
+                    case 1:
+                        window = 2;
+                        set_charater();
+                        break;
+                    case 2:
+                        window = 3; // option's window
+                        menu_selection = 1;
+                        draw_option();
+                        break;
+                    case 3:
+                        error = GAME_TERMINATE;
+                        break;
+                }
 
-                //Initialize Timer
-                timer  = al_create_timer(1.0/15.0);
-                timer2  = al_create_timer(1.0);
-                timer3  = al_create_timer(1.0/10.0);
-                al_register_event_source(event_queue, al_get_timer_event_source(timer)) ;
-                al_register_event_source(event_queue, al_get_timer_event_source(timer2)) ;
-                al_register_event_source(event_queue, al_get_timer_event_source(timer3)) ;
-                al_start_timer(timer);
-                al_start_timer(timer2);
-                al_start_timer(timer3);
             }
             else{
-                printf("%d\n", menu_selection);
                 draw_menu();
             }
         }
@@ -272,7 +246,116 @@ int game_run() {
             error = process_event();
         }
     }
+    else if(window == 3){
+        judge_next_window = false;
+        if (!al_is_event_queue_empty(event_queue)) {
+            error = process_event();
+            if(judge_next_window) {
+                switch(menu_selection){
+                    case 1: // change music play or not
+                        music_control = !music_control;
+                        if( !music_control ) al_destroy_sample(song);
+                        else load_music("menu_background.wav");
+                        judge_next_window = false;
+                        draw_option();
+                        break;
+                    case 2:
+
+                        break;
+                    case 3: // Return to menu
+                        window = 1;
+                        menu_selection = 1;
+                        judge_next_window = false;
+                        draw_menu();
+                        break;
+                }
+
+            }
+            else{
+                //printf("%d\n", menu_selection);
+                draw_option();
+            }
+        }
+    }
     return error;
+}
+
+void draw_option(){
+    al_clear_to_color(al_map_rgb(100,100,100));
+
+    // Option title
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2, option_y , ALLEGRO_ALIGN_CENTRE, "Option");
+    al_draw_rectangle(WIDTH/2-150, option_y-10, WIDTH/2+150, option_y-10+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Mute option
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+option_space_y , ALLEGRO_ALIGN_CENTRE, (music_control)?"Play music":"Stop music");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+option_space_y, WIDTH/2+150, option_y-10+option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Nothing option
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+2*option_space_y , ALLEGRO_ALIGN_CENTRE, "Nothing Option");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+2*option_space_y, WIDTH/2+150, option_y-10+2*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Return to menu
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+3*option_space_y , ALLEGRO_ALIGN_CENTRE, "Return to Menu");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+3*option_space_y, WIDTH/2+150, option_y-10+3*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Option pointer
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2-120, option_y+menu_selection*option_space_y , ALLEGRO_ALIGN_CENTRE, "=>");
+
+    al_flip_display();
+}
+
+void draw_menu(){
+    al_clear_to_color(al_map_rgb(100,100,100));
+    // Load and draw text
+    font = al_load_ttf_font("material/font/Balsamiq/BalsamiqSans-Italic.ttf",20,0);
+
+    // Game title
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2, option_y , ALLEGRO_ALIGN_CENTRE, "Game Name Here");
+    al_draw_rectangle(WIDTH/2-150, option_y-10, WIDTH/2+150, option_y-10+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Game start option
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+option_space_y , ALLEGRO_ALIGN_CENTRE, "Game Start");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+option_space_y, WIDTH/2+150, option_y-10+option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Game option option
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+2*option_space_y , ALLEGRO_ALIGN_CENTRE, "Options");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+2*option_space_y, WIDTH/2+150, option_y-10+2*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Game escape option
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2+30, option_y+3*option_space_y , ALLEGRO_ALIGN_CENTRE, "Exit");
+    al_draw_rectangle(WIDTH/2-90, option_y-10+3*option_space_y, WIDTH/2+150, option_y-10+3*option_space_y+option_rect_height, al_map_rgb(255, 255, 255), 0);
+    // Option pointer
+    al_draw_text(font, al_map_rgb(255,255,255), WIDTH/2-120, option_y+menu_selection*option_space_y , ALLEGRO_ALIGN_CENTRE, "=>");
+
+    al_flip_display();
+}
+
+void load_music(std::string FileName){
+    // Load sound
+    song = al_load_sample( ("material/music/"+FileName).c_str() );
+    if (!song){
+        printf( "Audio clip sample not loaded!\n" );
+        show_err_msg(-6);
+    }
+    // Loop the song until the display closes
+    al_play_sample(song, 1.0, 0.0, 1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
+}
+
+void set_charater(){
+    // Setting Character
+    character1.x = WIDTH / 2;
+    character1.y = HEIGHT / 2 + 150;
+    character2.x = WIDTH + 100;
+    character2.y = HEIGHT / 2 - 280;
+    character1.image_path = al_load_bitmap("tower.png");
+    character2.image_path = al_load_bitmap("teemo_left.png");
+    character3.image_path = al_load_bitmap("teemo_right.png");
+    background = al_load_bitmap("stage.jpg");
+
+    //Initialize Timer
+    timer  = al_create_timer(1.0/15.0);
+    timer2  = al_create_timer(1.0);
+    timer3  = al_create_timer(1.0/10.0);
+    al_register_event_source(event_queue, al_get_timer_event_source(timer)) ;
+    al_register_event_source(event_queue, al_get_timer_event_source(timer2)) ;
+    al_register_event_source(event_queue, al_get_timer_event_source(timer3)) ;
+    al_start_timer(timer);
+    al_start_timer(timer2);
+    al_start_timer(timer3);
 }
 
 void game_destroy() {
